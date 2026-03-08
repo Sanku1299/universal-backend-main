@@ -22,7 +22,7 @@ async function connectDB() {
   if (cached.conn) return cached.conn
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(process.env.MONGO_URI)
+    cached.promise = mongoose.connect("mongodb+srv://logistics:universal123@shipment.uuywqxb.mongodb.net/?appName=shipment")
   }
 
   cached.conn = await cached.promise
