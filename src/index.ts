@@ -1,13 +1,70 @@
 import express from 'express'
 import path from 'path'
 import { fileURLToPath } from 'url'
-const connectDB = require("../database");
-const Shipment = require("../models/shipment");
+import mongoose from 'mongoose'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const app = express();
+app.use(express.json());
+
+/* ---------------- DB CONNECTION ---------------- */
+
+let cached = global.mongoose
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null }
+}
+
+async function connectDB() {
+
+  if (cached.conn) return cached.conn
+
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(process.env.MONGO_URI)
+  }
+
+  cached.conn = await cached.promise
+  return cached.conn
+}
+
+/* ---------------- MODEL ---------------- */
+
+interface IShipment {
+  awb_no: string
+  pickup_date: string
+  from: string
+  to: string
+  status: string
+  delivery_date: string
+  delivery_time: string
+  recipient: string
+  reference_no: string
+}
+
+const shipmentSchema = new mongoose.Schema<IShipment>({
+
+  awb_no: {
+    type: String,
+    unique: true
+  },
+  pickup_date: String,
+  from: String,
+  to: String,
+  status: String,
+  delivery_date: String,
+  delivery_time: String,
+  recipient: String,
+  reference_no: String
+
+})
+
+const Shipment =
+  mongoose.models.Shipment ||
+  mongoose.model<IShipment>("Shipment", shipmentSchema);
+
+/* ---------------- ROUTES ---------------- */
 
 // Home route - HTML
 app.get('/', (req, res) => {
@@ -27,7 +84,7 @@ app.get('/', (req, res) => {
         <button type="submit">Track</button>
     </form>
     <h2>Check All AWB Records</h2>
-    <form method="GET" action="/api/all-data" id="get_records_form">
+    <form method="GET" action="/all-data" id="get_records_form">
         <button type="submit">View All Records</button>
     </form>
     <div class="upload-csv-container">
@@ -45,7 +102,7 @@ app.get('/', (req, res) => {
             e.preventDefault();
             const awb = document.getElementById('awb').value.trim();
             if (awb) {
-                window.location.href = '/api/track/' + encodeURIComponent(awb);
+                window.location.href = '/track/' + encodeURIComponent(awb);
             }
         });
 
@@ -60,7 +117,7 @@ app.get('/', (req, res) => {
                 alert('Invalid JSON format!');
                 return;
             }
-            const res = await fetch('/api/upload-json', {
+            const res = await fetch('/upload-json', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(records)
@@ -97,7 +154,7 @@ app.get('/', (req, res) => {
 
                     const jsonData = results.data;
 
-                    fetch("/api/upload-csv", {
+                    fetch("/upload-csv", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json"
@@ -143,7 +200,7 @@ app.get('/track/:awb', async (req, res) => {
   const awbNumber = req.params.awb;
   await connectDB();
   try {
-    const shipment = await Shipment.findOne({ awb: awbNumber });
+    const shipment = await Shipment.findOne({ awb_no: awbNumber });
     if (!shipment) {
       return res.status(404).json({ message: "AWB not found" });
     }
