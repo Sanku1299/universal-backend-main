@@ -73,6 +73,7 @@ app.get('/', (req, res) => {
     <html>
 <head>
     <title>AWB Tracking</title>
+    <link rel="icon" href="/favicon.ico" />
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 </head>
 
